@@ -3,7 +3,7 @@
 import { FormEvent, useCallback, useEffect, useMemo, useState } from 'react';
 import { supabase } from '@/lib/supabase';
 import {
-  CalendarDays, Cake, Check, ClipboardList, Clock3, FilePlus2, FileText, Trash2,
+  CalendarDays, Cake, Check, ClipboardList, Clock3, FilePlus2, FileText, Pencil, Trash2,
   History, LayoutDashboard, LogOut, Menu, MessageCircle, Plus, Search,
   Settings, Stethoscope, UserRound, UserPlus, Users, X,
 } from 'lucide-react';
@@ -12,6 +12,9 @@ import { br, calculateAge, cash, digits, formatCpf, formatPhone, iso, printDecla
 import { Empty, Modal, Status } from '@/components/essencialy/shared-ui';
 export function Agenda({
   profile,
+  profiles,
+  cities,
+  stores,
   schedules,
   appointments,
   agendaDate,
@@ -28,6 +31,7 @@ export function Agenda({
   const [storeFilter, setStoreFilter] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
   const [openedSchedule, setOpenedSchedule] = useState<Schedule | null>(null);
+  const [editingSchedule, setEditingSchedule] = useState<Schedule | null>(null);
   const base = new Date(agendaDate + 'T12:00:00');
   const end = new Date(base);
   if (mode === 'semana') end.setDate(end.getDate() + 6);
@@ -120,18 +124,22 @@ export function Agenda({
           </section>
         )}
       </div>
-      {openedSchedule && <Modal wide title={`Agenda · ${br(openedSchedule.schedule_date)} · ${openedSchedule.cities?.name || ''}`} close={()=>setOpenedSchedule(null)}><ScheduleBlock schedule={openedSchedule} apps={appointments.filter((a:Appointment)=>a.schedule_id===openedSchedule.id&&(!statusFilter||a.status===statusFilter))} book={(time:string)=>{setTarget({schedule:openedSchedule,time});setModal('booking')}} status={status} open={(p:Patient)=>{setTarget(p);setModal('consultation')}} clinical={clinical} triage={(a:Appointment)=>{setTarget(a);setView?.('triagem');setOpenedSchedule(null)}} edit={(a:Appointment,time:string)=>{setTarget({schedule:openedSchedule,time,appointment:a});setModal('booking')}}/><footer className="mt-5 border-t pt-4"><button className="rounded-xl border border-red-200 bg-red-50 px-4 py-2 font-bold text-red-700" onClick={()=>removeSchedule(openedSchedule)}><Trash2 className="mr-1 inline" size={16}/> Excluir agenda</button></footer></Modal>}
+      {openedSchedule && <Modal wide title={`Agenda · ${br(openedSchedule.schedule_date)} · ${openedSchedule.cities?.name || ''}`} close={()=>setOpenedSchedule(null)}><ScheduleBlock schedule={openedSchedule} apps={appointments.filter((a:Appointment)=>a.schedule_id===openedSchedule.id&&(!statusFilter||a.status===statusFilter))} book={(time:string)=>{setTarget({schedule:openedSchedule,time});setModal('booking')}} status={status} open={(p:Patient)=>{setTarget(p);setModal('consultation')}} clinical={clinical} triage={(a:Appointment)=>{setTarget(a);setView?.('triagem');setOpenedSchedule(null)}} edit={(a:Appointment,time:string)=>{setTarget({schedule:openedSchedule,time,appointment:a});setModal('booking')}}/><footer className="mt-5 flex flex-wrap gap-2 border-t pt-4"><button className="btn-secondary" onClick={()=>setEditingSchedule(openedSchedule)}><Pencil className="mr-1 inline" size={16}/> Editar agenda e horários</button><button className="rounded-xl border border-red-200 bg-red-50 px-4 py-2 font-bold text-red-700" onClick={()=>removeSchedule(openedSchedule)}><Trash2 className="mr-1 inline" size={16}/> Excluir agenda</button></footer></Modal>}
+      {editingSchedule && <ScheduleEditor schedule={editingSchedule} appointments={appointments} profiles={profiles} cities={cities} stores={stores} flash={flash} load={load} close={()=>setEditingSchedule(null)} saved={()=>{setEditingSchedule(null);setOpenedSchedule(null)}}/>}
     </>
   );
 }
-function ScheduleBlock({ schedule, apps, book, status, open, clinical, triage, edit }: any) {
-  const slots = [];
+function scheduleSlots(schedule: Schedule) {
+  if (Array.isArray(schedule.slot_times)) return [...new Set(schedule.slot_times.map(time=>time.slice(0,5)))].sort();
+  const slots:string[] = [];
   const [sh, sm] = schedule.start_time.split(':').map(Number);
   const [eh, em] = schedule.end_time.split(':').map(Number);
   for (let n = sh * 60 + sm; n < eh * 60 + em; n += schedule.interval_minutes)
-    slots.push(
-      `${String(Math.floor(n / 60)).padStart(2, '0')}:${String(n % 60).padStart(2, '0')}`,
-    );
+    slots.push(`${String(Math.floor(n / 60)).padStart(2, '0')}:${String(n % 60).padStart(2, '0')}`);
+  return slots;
+}
+function ScheduleBlock({ schedule, apps, book, status, open, clinical, triage, edit }: any) {
+  const slots = scheduleSlots(schedule);
   const map = new Map(
     apps
       .filter((a: Appointment) => a.status !== 'CANCELADO')
@@ -234,6 +242,21 @@ function ScheduleBlock({ schedule, apps, book, status, open, clinical, triage, e
       </div>
     </section>
   );
+}
+
+function ScheduleEditor({schedule,appointments,profiles,cities,stores,close,saved,load,flash}:any){
+  const linked=appointments.filter((appointment:Appointment)=>appointment.schedule_id===schedule.id);
+  const occupied=new Set(linked.map((appointment:Appointment)=>new Date(appointment.starts_at).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})));
+  const locked=linked.length>0;
+  const[city,setCity]=useState(schedule.city_id);
+  const[store,setStore]=useState(schedule.store_id);
+  const[slots,setSlots]=useState<string[]>(()=>scheduleSlots(schedule));
+  const[newTime,setNewTime]=useState('');
+  const visibleStores=stores.filter((store:Store)=>store.city_id===city);
+  function addTime(){if(!/^\d{2}:\d{2}$/.test(newTime))return flash('Informe um horário válido.');if(slots.includes(newTime))return flash('Este horário já existe na agenda.');setSlots(current=>[...current,newTime].sort());setNewTime('')}
+  function removeTime(time:string){if(occupied.has(time))return flash('Este horário possui paciente agendado e não pode ser removido.');setSlots(current=>current.filter(item=>item!==time))}
+  async function save(e:FormEvent<HTMLFormElement>){e.preventDefault();if(!slots.length)return flash('A agenda precisa ter pelo menos um horário.');const f=new FormData(e.currentTarget);const professional=profiles.find((item:Profile)=>item.id===f.get('professional_id'));const interval=Math.max(5,Number(f.get('interval_minutes'))||30);const last=slots[slots.length-1].split(':').map(Number);const endMinutes=last[0]*60+last[1]+interval;const payload={city_id:locked?schedule.city_id:city,store_id:locked?schedule.store_id:store,professional_id:f.get('professional_id'),professional_name:professional?.full_name||schedule.professional_name,schedule_date:locked?schedule.schedule_date:f.get('schedule_date'),interval_minutes:interval,start_time:`${slots[0]}:00`,end_time:`${String(Math.floor(endMinutes/60)%24).padStart(2,'0')}:${String(endMinutes%60).padStart(2,'0')}:00`,slot_times:slots};const{data,error}=await supabase.from('schedules').update(payload).eq('id',schedule.id).select('id').maybeSingle();if(error)return flash(error.message);if(!data)return flash('A agenda não foi alterada. Verifique sua permissão.');flash('Agenda e horários atualizados.');await load();saved()}
+  return <Modal wide title={`Editar agenda · ${br(schedule.schedule_date)}`} close={close}><form onSubmit={save} className="grid gap-4 sm:grid-cols-2"><label className="label">Cidade<select className="field" name="city_id" value={city} disabled={locked} onChange={e=>{const next=e.target.value;setCity(next);setStore(stores.find((item:Store)=>item.city_id===next)?.id||'')}} required>{cities.map((item:City)=><option key={item.id} value={item.id}>{item.name}</option>)}</select></label><label className="label">Ótica<select className="field" name="store_id" value={store} onChange={e=>setStore(e.target.value)} disabled={locked} required>{visibleStores.map((item:Store)=><option key={item.id} value={item.id}>{item.name}</option>)}</select></label><label className="label">Data<input className="field" type="date" name="schedule_date" defaultValue={schedule.schedule_date} disabled={locked} required/></label><label className="label">Profissional<select className="field" name="professional_id" defaultValue={schedule.professional_id||''} required><option value="">Selecione</option>{profiles.filter((item:Profile)=>['ADMIN','OPTOMETRISTA'].includes(item.role)&&item.active).map((item:Profile)=><option key={item.id} value={item.id}>{item.full_name}</option>)}</select></label><label className="label">Duração padrão<input className="field" type="number" min="5" name="interval_minutes" defaultValue={schedule.interval_minutes} required/></label>{locked&&<p className="self-end rounded-lg bg-amber-50 p-3 text-sm text-amber-800">Cidade, ótica e data ficam protegidas porque esta agenda já possui paciente agendado.</p>}<section className="sm:col-span-2 rounded-xl border p-4"><b>Horários da agenda</b><div className="mt-3 flex gap-2"><input className="field" type="time" value={newTime} onChange={e=>setNewTime(e.target.value)}/><button type="button" className="btn-secondary whitespace-nowrap" onClick={addTime}><Plus className="mr-1 inline" size={16}/> Adicionar horário</button></div><div className="mt-4 flex flex-wrap gap-2">{slots.map(time=><span key={time} className={`inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-sm font-bold ${occupied.has(time)?'bg-amber-50':'bg-[#edf2ef]'}`}>{time}{occupied.has(time)?<small>ocupado</small>:<button type="button" aria-label={`Remover ${time}`} className="text-red-700" onClick={()=>removeTime(time)}><X size={15}/></button>}</span>)}</div></section><div className="flex flex-wrap gap-2 sm:col-span-2"><button className="btn-primary">Salvar alterações</button><button type="button" className="btn-secondary" onClick={close}>Cancelar</button></div></form></Modal>
 }
 
 export function ScheduleForm({ profile, profiles, cities, stores, close, load, flash }: any) {

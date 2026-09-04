@@ -4,6 +4,7 @@ import { FormEvent, useCallback, useEffect, useMemo, useState } from 'react';
 import { supabase } from '@/lib/supabase';
 import {
   CalendarDays, Cake, Check, ClipboardList, Clock3, FilePlus2, FileText,
+<<<<<<< HEAD
   CalendarPlus, CheckCircle2, History, LayoutDashboard, LogOut, Menu, MessageCircle, PhoneCall, Plus, Search,
   Settings, Stethoscope, UserRound, UserPlus, Users, X,
 } from 'lucide-react';
@@ -11,6 +12,15 @@ import type { Appointment, City, Consultation, Contact, Patient, Prescription, P
 import { br, brDateTime, cash, digits, formatPhone, googleCalendarContactUrl, iso, printDeclaration, tomorrow } from '@/lib/essencialy-utils';
 import { Empty, Modal, Status } from '@/components/essencialy/shared-ui';
 export function Dashboard({ appointments, patients, consultations, prescriptions, contacts, setView, setTarget, setModal, load, flash }: any) {
+=======
+  History, LayoutDashboard, LogOut, Menu, MessageCircle, Plus, Search,
+  Settings, Stethoscope, UserRound, UserPlus, Users, X,
+} from 'lucide-react';
+import type { Appointment, City, Consultation, Contact, Patient, Prescription, Profile, Schedule, Store } from '@/types/essencialy';
+import { br, cash, digits, iso, printDeclaration, tomorrow } from '@/lib/essencialy-utils';
+import { Empty, Modal, Status } from '@/components/essencialy/shared-ui';
+export function Dashboard({ appointments, patients, consultations, prescriptions, setView, setTarget }: any) {
+>>>>>>> 94f138011f100fb253dc2d9d895d7f497894e50c
   const today = appointments.filter(
     (a: Appointment) =>
       a.starts_at.slice(0, 10) === iso() && a.status !== 'CANCELADO',
@@ -34,6 +44,7 @@ export function Dashboard({ appointments, patients, consultations, prescriptions
     const d = new Date(r.exam_date + 'T12:00:00'); d.setFullYear(d.getFullYear() + 1);
     return d < new Date();
   });
+<<<<<<< HEAD
   const contactReturns = [...contacts]
     .filter((contact: Contact) => contact.scheduled_return_at && !contact.return_completed_at)
     .sort((a: Contact, b: Contact) => String(a.scheduled_return_at).localeCompare(String(b.scheduled_return_at)));
@@ -49,6 +60,8 @@ export function Dashboard({ appointments, patients, consultations, prescriptions
     flash('Retorno de contato concluído.');
     await load();
   }
+=======
+>>>>>>> 94f138011f100fb253dc2d9d895d7f497894e50c
   const cards = [
     ['Consultas hoje', today.length, CalendarDays, 'agenda', 'hoje'],
     ['A confirmar', pending.length, MessageCircle, 'crm', 'confirmacoes'],
@@ -58,7 +71,10 @@ export function Dashboard({ appointments, patients, consultations, prescriptions
     ['Consultas do mês', month.length, ClipboardList, 'historico', 'mes'],
     ['Aniversariantes hoje', birthdays.length, Cake, 'crm', 'aniversariantes'],
     ['Receitas vencidas', expired.length, FileText, 'crm', 'receitas'],
+<<<<<<< HEAD
     ['Clientes para retornar contato', contactReturns.length, PhoneCall, 'dashboard', 'contatos'],
+=======
+>>>>>>> 94f138011f100fb253dc2d9d895d7f497894e50c
   ];
   return (
     <>
@@ -70,6 +86,7 @@ export function Dashboard({ appointments, patients, consultations, prescriptions
         {cards.map(([label, count, Icon, to, filter]: any) => (
           <button
             key={label}
+<<<<<<< HEAD
             onClick={() => {
               if (filter === 'contatos') {
                 document.getElementById('contact-returns')?.scrollIntoView({ behavior: 'smooth' });
@@ -77,6 +94,9 @@ export function Dashboard({ appointments, patients, consultations, prescriptions
               }
               setTarget({ crmFilter: filter }); setView(to);
             }}
+=======
+            onClick={() => { setTarget({ crmFilter: filter }); setView(to); }}
+>>>>>>> 94f138011f100fb253dc2d9d895d7f497894e50c
             className="card p-5 text-left hover:-translate-y-0.5 transition"
           >
             <div className="p-2.5 w-fit rounded-xl bg-[#edf2ef] text-[#173f32]">
@@ -87,6 +107,7 @@ export function Dashboard({ appointments, patients, consultations, prescriptions
           </button>
         ))}
       </div>
+<<<<<<< HEAD
       <section id="contact-returns" className="card p-5 mt-6 scroll-mt-24">
         <div className="flex items-center justify-between gap-3">
           <div><h3 className="font-black">Clientes para retornar contato</h3><p className="text-sm text-[#7d857f]">Lembretes agendados pelo CRM.</p></div>
@@ -110,6 +131,8 @@ export function Dashboard({ appointments, patients, consultations, prescriptions
           )) : <Empty>Nenhum retorno de contato pendente.</Empty>}
         </div>
       </section>
+=======
+>>>>>>> 94f138011f100fb253dc2d9d895d7f497894e50c
       <div className="grid lg:grid-cols-[1.4fr_.6fr] gap-5 mt-6">
         <section className="card p-5">
           <h3 className="font-black">Atendimentos de hoje</h3>
@@ -145,3 +168,7 @@ export function Dashboard({ appointments, patients, consultations, prescriptions
     </>
   );
 }
+<<<<<<< HEAD
+=======
+
+>>>>>>> 94f138011f100fb253dc2d9d895d7f497894e50c

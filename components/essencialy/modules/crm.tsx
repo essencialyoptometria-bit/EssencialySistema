@@ -8,7 +8,11 @@ import {
   Settings, Stethoscope, UserRound, UserPlus, Users, X,
 } from 'lucide-react';
 import type { Appointment, City, Consultation, Contact, Patient, Prescription, Profile, Schedule, Store } from '@/types/essencialy';
+<<<<<<< HEAD
 import { br, brDateTime, cash, digits, formatCpf, formatPhone, googleCalendarContactUrl, iso, printDeclaration, tomorrow } from '@/lib/essencialy-utils';
+=======
+import { br, cash, digits, iso, printDeclaration, tomorrow } from '@/lib/essencialy-utils';
+>>>>>>> 94f138011f100fb253dc2d9d895d7f497894e50c
 import { Empty, Modal, Status } from '@/components/essencialy/shared-ui';
 export function CRM({ appointments, consultations, prescriptions, patients, contacts, target, setTarget, setModal, setView, setAgendaDate, load, flash }: any) {
   const [consultationPeriod,setConsultationPeriod]=useState({start:'',end:''});
@@ -54,7 +58,11 @@ export function CRM({ appointments, consultations, prescriptions, patients, cont
     <>
       <h2 className="text-3xl font-black">CRM</h2>
       <p className="text-[#778079]">Dados reais da agenda e das consultas.</p>
+<<<<<<< HEAD
       <section className="card mt-4 p-4"><div className="flex flex-col gap-3 sm:flex-row sm:items-end"><label className="label flex-1">Data inicial<input className="field" type="date" value={start} max={end||undefined} onChange={e=>setConsultationPeriod(period=>({...period,start:e.target.value}))}/></label><label className="label flex-1">Data final<input className="field" type="date" value={end} min={start||undefined} onChange={e=>setConsultationPeriod(period=>({...period,end:e.target.value}))}/></label>{hasConsultationPeriod&&<button className="btn-secondary" onClick={()=>setConsultationPeriod({start:'',end:''})}>Limpar período</button>}</div>{hasConsultationPeriod&&<div className="mt-4 border-t pt-4"><div className="flex justify-between"><b>{periodTitle}</b><span className="badge bg-[#edf2ef]">{consultationsByPeriod.length}</span></div><div className="mt-2 divide-y">{consultationsByPeriod.map((c:Consultation)=><div className="flex flex-col gap-3 py-3 sm:flex-row sm:items-center sm:justify-between" key={c.id}><div><b>{c.patients?.full_name}</b><p className="text-sm text-[#778079]">Consulta em {br(c.exam_date.slice(0,10))} · {formatPhone(c.patients?.phone)||'Sem telefone'} · CPF {formatCpf(c.patients?.cpf)||'—'}</p></div><div className="flex flex-wrap gap-2"><button className="btn-secondary" onClick={()=>{setTarget(c.patients);setModal('patient')}}>Abrir paciente</button><a className="btn-secondary" target="_blank" rel="noreferrer" href={`https://wa.me/55${digits(c.patients?.phone)}`}>WhatsApp</a><button className="btn-secondary" onClick={()=>{setTarget({patient:c.patients,consultation:c});setModal('contact')}}>Registrar contato</button></div></div>)}{!consultationsByPeriod.length&&<Empty>Nenhuma consulta encontrada neste período.</Empty>}</div></div>}</section>
+=======
+      <section className="card mt-4 p-4"><div className="flex flex-col gap-3 sm:flex-row sm:items-end"><label className="label flex-1">Data inicial<input className="field" type="date" value={start} max={end||undefined} onChange={e=>setConsultationPeriod(period=>({...period,start:e.target.value}))}/></label><label className="label flex-1">Data final<input className="field" type="date" value={end} min={start||undefined} onChange={e=>setConsultationPeriod(period=>({...period,end:e.target.value}))}/></label>{hasConsultationPeriod&&<button className="btn-secondary" onClick={()=>setConsultationPeriod({start:'',end:''})}>Limpar período</button>}</div>{hasConsultationPeriod&&<div className="mt-4 border-t pt-4"><div className="flex justify-between"><b>{periodTitle}</b><span className="badge bg-[#edf2ef]">{consultationsByPeriod.length}</span></div><div className="mt-2 divide-y">{consultationsByPeriod.map((c:Consultation)=><div className="flex flex-col gap-3 py-3 sm:flex-row sm:items-center sm:justify-between" key={c.id}><div><b>{c.patients?.full_name}</b><p className="text-sm text-[#778079]">Consulta em {br(c.exam_date.slice(0,10))} · {c.patients?.phone||'Sem telefone'} · CPF {c.patients?.cpf||'—'}</p></div><div className="flex flex-wrap gap-2"><button className="btn-secondary" onClick={()=>{setTarget(c.patients);setModal('patient')}}>Abrir paciente</button><a className="btn-secondary" target="_blank" rel="noreferrer" href={`https://wa.me/55${digits(c.patients?.phone)}`}>WhatsApp</a><button className="btn-secondary" onClick={()=>{setTarget({patient:c.patients,consultation:c});setModal('contact')}}>Registrar contato</button></div></div>)}{!consultationsByPeriod.length&&<Empty>Nenhuma consulta encontrada neste período.</Empty>}</div></div>}</section>
+>>>>>>> 94f138011f100fb253dc2d9d895d7f497894e50c
       <div className="flex flex-wrap gap-2 mt-4">{groups.map(([title]:any)=><button key={title} className="btn-secondary" onClick={()=>setTarget({crmFilter:String(title).toLowerCase()})}>{title}</button>)}</div>
       <div className="grid xl:grid-cols-3 gap-4 mt-5">
         {groups.filter(([title]:any)=>!selected||String(title).toLowerCase().includes(String(selected).replace('confirmacoes','confirma').replace('receitas','receita').replace('retornos','retorno').replace('faltosos','faltoso').replace('aniversariantes','anivers'))).map(([title, items]: any) => (
@@ -71,7 +79,11 @@ export function CRM({ appointments, consultations, prescriptions, patients, cont
                     <p className="text-xs text-[#778079]">
                       {x.return_date
                         ? `Retorno ${br(x.return_date)}`
+<<<<<<< HEAD
                         : `${br(x.starts_at)} · ${formatPhone(x.patients?.phone) || ''}`}
+=======
+                        : `${br(x.starts_at)} · ${x.patients?.phone || ''}`}
+>>>>>>> 94f138011f100fb253dc2d9d895d7f497894e50c
                     </p>
                     <div className="flex flex-wrap gap-2 mt-2">
                       <button className="btn-secondary" onClick={()=>{setTarget(x.patients||x);setModal('patient')}}>Abrir paciente</button>
@@ -90,10 +102,18 @@ export function CRM({ appointments, consultations, prescriptions, patients, cont
         ))}
       </div>
       <section className="card p-5 mt-5"><h3 className="font-black">Histórico de contatos</h3>
+<<<<<<< HEAD
         <div className="divide-y">{contacts.slice(0,20).map((c:Contact)=><div className="py-3" key={c.id}><b>{c.patients?.full_name}</b><p className="text-sm">{br(c.contacted_at)} · {c.contact_user?.full_name} · {c.reason}</p><p className="text-sm text-[#778079]">{c.result}{c.notes?` — ${c.notes}`:''}{c.scheduled_return_at?` · Retornar em ${brDateTime(c.scheduled_return_at)}`:''}</p></div>)}</div>
+=======
+        <div className="divide-y">{contacts.slice(0,20).map((c:Contact)=><div className="py-3" key={c.id}><b>{c.patients?.full_name}</b><p className="text-sm">{br(c.contacted_at)} · {c.contact_user?.full_name} · {c.reason}</p><p className="text-sm text-[#778079]">{c.result}{c.notes?` — ${c.notes}`:''}</p></div>)}</div>
+>>>>>>> 94f138011f100fb253dc2d9d895d7f497894e50c
       </section>
     </>
   );
 }
 
+<<<<<<< HEAD
 export function ContactForm({profile,target,close,load,flash}:any){const p=target.patient;const[scheduled,setScheduled]=useState('');async function save(e:FormEvent<HTMLFormElement>){e.preventDefault();const f=new FormData(e.currentTarget);const scheduledReturn=scheduled?new Date(scheduled).toISOString():null;const{error}=await supabase.from('crm_contacts').insert({patient_id:p.id,appointment_id:target.appointment?.id||null,consultation_id:target.consultation?.id||null,contacted_by:profile.id,reason:f.get('reason'),result:f.get('result'),notes:f.get('notes')||null,scheduled_return_at:scheduledReturn});if(error)return flash(error.message);if(target.contactReminder?.id){const{error:completeError}=await supabase.from('crm_contacts').update({return_completed_at:new Date().toISOString()}).eq('id',target.contactReminder.id);if(completeError)return flash(`Contato salvo, mas o lembrete anterior não foi concluído: ${completeError.message}`)}if(target.consultation?.id)await supabase.from('consultations').update({return_status:scheduledReturn?'AGENDADO':'CONTATAR'}).eq('id',target.consultation.id);flash(scheduledReturn?'Contato salvo e retorno enviado ao dashboard.':'Contato registrado.');close();load()}return <Modal title={`Registrar contato · ${p.full_name}`} close={close}><form onSubmit={save} className="space-y-4"><label className="label">Motivo<input className="field" name="reason" required/></label><label className="label">Resultado<select className="field" name="result" required><option value="">Selecione</option><option>Confirmou interesse</option><option>Não respondeu</option><option>Retorno agendado</option><option>Não tem interesse</option></select></label><label className="label">Retorno agendado<input className="field" name="scheduled_return_at" type="datetime-local" value={scheduled} onChange={e=>setScheduled(e.target.value)}/></label>{scheduled&&<a className="btn-secondary block w-full text-center" target="_blank" rel="noreferrer" href={googleCalendarContactUrl(p,scheduled)}>Adicionar também ao Google Agenda</a>}<label className="label">Observação<textarea className="field" name="notes"/></label><button className="btn-primary w-full">Salvar contato</button></form></Modal>}
+=======
+export function ContactForm({profile,target,close,load,flash}:any){const p=target.patient;async function save(e:FormEvent<HTMLFormElement>){e.preventDefault();const f=new FormData(e.currentTarget);const scheduled=f.get('scheduled_return_at')||null;const {error}=await supabase.from('crm_contacts').insert({patient_id:p.id,appointment_id:target.appointment?.id||null,consultation_id:target.consultation?.id||null,contacted_by:profile.id,reason:f.get('reason'),result:f.get('result'),notes:f.get('notes')||null,scheduled_return_at:scheduled});if(error)return flash(error.message);if(target.consultation?.id)await supabase.from('consultations').update({return_status:scheduled?'AGENDADO':'CONTATAR'}).eq('id',target.consultation.id);flash('Contato registrado.');close();load()}return <Modal title={`Registrar contato · ${p.full_name}`} close={close}><form onSubmit={save} className="space-y-4"><label className="label">Motivo<input className="field" name="reason" required/></label><label className="label">Resultado<select className="field" name="result" required><option value="">Selecione</option><option>Confirmou interesse</option><option>Não respondeu</option><option>Retorno agendado</option><option>Não tem interesse</option></select></label><label className="label">Retorno agendado<input className="field" name="scheduled_return_at" type="datetime-local"/></label><label className="label">Observação<textarea className="field" name="notes"/></label><button className="btn-primary w-full">Salvar contato</button></form></Modal>}
+>>>>>>> 94f138011f100fb253dc2d9d895d7f497894e50c

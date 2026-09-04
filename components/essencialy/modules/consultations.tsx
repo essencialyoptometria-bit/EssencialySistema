@@ -8,7 +8,11 @@ import {
   Settings, Stethoscope, UserRound, UserPlus, Users, X,
 } from 'lucide-react';
 import type { Appointment, City, Consultation, Contact, Patient, Prescription, Profile, Schedule, Store } from '@/types/essencialy';
+<<<<<<< HEAD
 import { br, calculateAge, formatCpf, formatPhone, iso, printDeclaration, printPrescription, signedSphere } from '@/lib/essencialy-utils';
+=======
+import { br, iso, printDeclaration, printPrescription } from '@/lib/essencialy-utils';
+>>>>>>> 94f138011f100fb253dc2d9d895d7f497894e50c
 import { Empty, Modal, Status, TriageSummary } from '@/components/essencialy/shared-ui';
 export function Consultations({ patients, consultations, setTarget, setModal }: any) {
   return (
@@ -66,7 +70,11 @@ export function ConsultForm({ target, prescriptions, close, load, flash }: any) 
       bichrome_green:f.get('bichrome_green'),
       bichrome_red:f.get('bichrome_red')
     };
+<<<<<<< HEAD
     const prescription={od_spherical:signedSphere(f.get('od_spherical')),od_cylindrical:f.get('od_cylindrical'),od_axis:f.get('od_axis'),oe_spherical:signedSphere(f.get('oe_spherical')),oe_cylindrical:f.get('oe_cylindrical'),oe_axis:f.get('oe_axis'),addition:f.get('addition')};
+=======
+    const prescription={od_spherical:f.get('od_spherical'),od_cylindrical:f.get('od_cylindrical'),od_axis:f.get('od_axis'),oe_spherical:f.get('oe_spherical'),oe_cylindrical:f.get('oe_cylindrical'),oe_axis:f.get('oe_axis'),addition:f.get('addition')};
+>>>>>>> 94f138011f100fb253dc2d9d895d7f497894e50c
     const { error } = await supabase.rpc('complete_consultation',{
       p_patient_id:patient.id,p_appointment_id:appointment?.id||null,p_exam_date:f.get('exam_date'),
       p_return_date:noReturn?null:(f.get('return_date')||null),p_screening:screening,p_notes:f.get('notes')||null,
@@ -77,11 +85,19 @@ export function ConsultForm({ target, prescriptions, close, load, flash }: any) 
     close();
     load();
   }
+<<<<<<< HEAD
   function currentPrescription(){const f=new FormData(formRef.current!);return {exam_date:String(f.get('exam_date')||iso()),pupillary_distance:String(f.get('dp')||''),notes:String(f.get('notes')||''),data:{od_spherical:signedSphere(f.get('od_spherical')),od_cylindrical:f.get('od_cylindrical'),od_axis:f.get('od_axis'),oe_spherical:signedSphere(f.get('oe_spherical')),oe_cylindrical:f.get('oe_cylindrical'),oe_axis:f.get('oe_axis'),addition:f.get('addition')}};}
   return (
     <Modal title={`Consulta · ${patient.full_name}`} close={close}>
       <section className="rounded-xl bg-[#edf2ef] p-4 mb-4">
         <b>Dados do paciente</b><div className="mt-2 grid gap-1 text-sm sm:grid-cols-2"><span><b>Nome:</b> {patient.full_name}</span><span><b>CPF:</b> {formatCpf(patient.cpf)||'—'}</span><span><b>Telefone:</b> {formatPhone(patient.phone)||'—'}</span><span><b>Nascimento:</b> {br(patient.birth_date)}</span><span><b>Idade:</b> {calculateAge(patient.birth_date)??'—'} anos</span></div>
+=======
+  function currentPrescription(){const f=new FormData(formRef.current!);return {exam_date:String(f.get('exam_date')||iso()),pupillary_distance:String(f.get('dp')||''),notes:String(f.get('notes')||''),data:{od_spherical:f.get('od_spherical'),od_cylindrical:f.get('od_cylindrical'),od_axis:f.get('od_axis'),oe_spherical:f.get('oe_spherical'),oe_cylindrical:f.get('oe_cylindrical'),oe_axis:f.get('oe_axis'),addition:f.get('addition')}};}
+  return (
+    <Modal title={`Consulta · ${patient.full_name}`} close={close}>
+      <section className="rounded-xl bg-[#edf2ef] p-4 mb-4">
+        <b>Dados do paciente</b><div className="mt-2 grid gap-1 text-sm sm:grid-cols-2"><span><b>Nome:</b> {patient.full_name}</span><span><b>CPF:</b> {patient.cpf||'—'}</span><span><b>Telefone:</b> {patient.phone||'—'}</span><span><b>Nascimento:</b> {br(patient.birth_date)}</span></div>
+>>>>>>> 94f138011f100fb253dc2d9d895d7f497894e50c
         <h3 className="mt-4 font-black">Triagem / Anamnese</h3>
         <TriageSummary triage={patient.triage} />
       </section>
