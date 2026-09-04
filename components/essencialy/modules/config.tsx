@@ -8,11 +8,7 @@ import {
   Settings, Stethoscope, UserRound, UserPlus, Users, X,
 } from 'lucide-react';
 import type { Appointment, City, Consultation, Contact, Patient, Prescription, Profile, Schedule, Store } from '@/types/essencialy';
-<<<<<<< HEAD
 import { br, calculateAge, cash, digits, iso, printDeclaration, tomorrow } from '@/lib/essencialy-utils';
-=======
-import { br, cash, digits, iso, printDeclaration, tomorrow } from '@/lib/essencialy-utils';
->>>>>>> 94f138011f100fb253dc2d9d895d7f497894e50c
 import { Empty, Modal, Status } from '@/components/essencialy/shared-ui';
 export function Config({ profile, cities, stores, load, flash }: any) {
   const [tab, setTab] = useState('local');
@@ -48,14 +44,8 @@ export function Config({ profile, cities, stores, load, flash }: any) {
         full_name: p.nome,
         phone: digits(p.telefone),
         cpf: digits(p.cpf) || null,
-<<<<<<< HEAD
         birth_date: p.dataNascimento?.slice?.(0, 10) || null,
         age: calculateAge(p.dataNascimento?.slice?.(0, 10)),
-=======
-        rg: p.rg || null,
-        birth_date: p.dataNascimento?.slice?.(0, 10) || null,
-        age: Number(p.idade) || null,
->>>>>>> 94f138011f100fb253dc2d9d895d7f497894e50c
         address: p.endereco || null,
         city_name: p.cidade || null,
         notes: p.observacao || null,
@@ -142,7 +132,3 @@ export function Config({ profile, cities, stores, load, flash }: any) {
     </>
   );
 }
-<<<<<<< HEAD
-=======
-
->>>>>>> 94f138011f100fb253dc2d9d895d7f497894e50c

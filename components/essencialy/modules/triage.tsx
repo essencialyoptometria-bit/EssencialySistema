@@ -4,11 +4,7 @@ import { FormEvent, useMemo, useState } from 'react';
 import { ClipboardList, Search, UserPlus, Users } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import type { Appointment, Patient, Profile, Schedule } from '@/types/essencialy';
-<<<<<<< HEAD
 import { calculateAge, digits, formatCpf, formatPhone, iso } from '@/lib/essencialy-utils';
-=======
-import { digits, iso } from '@/lib/essencialy-utils';
->>>>>>> 94f138011f100fb253dc2d9d895d7f497894e50c
 
 type TriageMode = 'new' | 'returning';
 
@@ -36,21 +32,6 @@ const familyFields = [
   ['family_glaucoma', 'Glaucoma na família'],
 ] as const;
 
-<<<<<<< HEAD
-=======
-function calculateAge(birthDate: string) {
-  if (!birthDate) return null;
-  const birth = new Date(birthDate + 'T12:00:00');
-  const today = new Date();
-  let age = today.getFullYear() - birth.getFullYear();
-  const beforeBirthday =
-    today.getMonth() < birth.getMonth() ||
-    (today.getMonth() === birth.getMonth() && today.getDate() < birth.getDate());
-  if (beforeBirthday) age -= 1;
-  return age >= 0 ? age : null;
-}
-
->>>>>>> 94f138011f100fb253dc2d9d895d7f497894e50c
 function CheckGroup({
   title,
   fields,
@@ -102,20 +83,12 @@ export function Triage({
   load: () => Promise<void>;
   flash: (message: string) => void;
 }) {
-<<<<<<< HEAD
   // `target` pode ser um Appointment vindo da Agenda ou da Fila.
-=======
-  // `target` pode ser um Appointment (vindo da Agenda/Fila, com patient_id)
-  // ou o próprio Patient (vindo do botão "Nova triagem" na tela de Pacientes).
->>>>>>> 94f138011f100fb253dc2d9d895d7f497894e50c
   const initialPatientId = target?.patient_id || target?.id || '';
   const [mode, setMode] = useState<TriageMode>(initialPatientId ? 'returning' : 'new');
   const [selectedId, setSelectedId] = useState(initialPatientId);
   const [search, setSearch] = useState('');
-<<<<<<< HEAD
   const [newBirthDate, setNewBirthDate] = useState('');
-=======
->>>>>>> 94f138011f100fb253dc2d9d895d7f497894e50c
   const [step, setStep] = useState<'patient' | 'anamnesis'>(
     initialPatientId ? 'anamnesis' : 'patient',
   );
@@ -147,10 +120,7 @@ export function Triage({
     setMode(nextMode);
     setSelectedId('');
     setSearch('');
-<<<<<<< HEAD
     setNewBirthDate('');
-=======
->>>>>>> 94f138011f100fb253dc2d9d895d7f497894e50c
     setStep('patient');
     setTarget(null);
   }
@@ -289,10 +259,6 @@ export function Triage({
           .insert({
             full_name: String(form.get('full_name') || '').trim(),
             cpf,
-<<<<<<< HEAD
-=======
-            rg: String(form.get('rg') || '').trim() || null,
->>>>>>> 94f138011f100fb253dc2d9d895d7f497894e50c
             birth_date: birthDate || null,
             age: calculateAge(birthDate),
             phone,
@@ -451,11 +417,7 @@ export function Triage({
                   >
                     <b>{patient.full_name}</b>
                     <p className="mt-1 text-sm text-gray-500">
-<<<<<<< HEAD
                       CPF: {formatCpf(patient.cpf) || '—'} · Telefone: {formatPhone(patient.phone) || '—'}
-=======
-                      CPF: {patient.cpf || '—'} · Telefone: {patient.phone || '—'}
->>>>>>> 94f138011f100fb253dc2d9d895d7f497894e50c
                     </p>
                   </button>
                 ))}
@@ -465,11 +427,7 @@ export function Triage({
                 <div className="mt-5 rounded-xl border border-emerald-200 bg-emerald-50 p-4">
                   <b className="text-emerald-900">Paciente selecionado</b>
                   <p className="text-sm text-emerald-800">
-<<<<<<< HEAD
                     {selectedPatient.full_name} · {formatPhone(selectedPatient.phone)}
-=======
-                    {selectedPatient.full_name} · {selectedPatient.phone}
->>>>>>> 94f138011f100fb253dc2d9d895d7f497894e50c
                   </p>
                 </div>
               )}
@@ -495,7 +453,6 @@ export function Triage({
               </label>
               <label className="label">
                 CPF *
-<<<<<<< HEAD
                 <input className="field" name="cpf" inputMode="numeric" onInput={e=>e.currentTarget.value=formatCpf(e.currentTarget.value)} required />
               </label>
               <label className="label">
@@ -509,21 +466,6 @@ export function Triage({
               <label className="label">
                 Telefone / WhatsApp *
                 <input className="field" name="phone" inputMode="tel" onInput={e=>e.currentTarget.value=formatPhone(e.currentTarget.value)} required />
-=======
-                <input className="field" name="cpf" inputMode="numeric" required />
-              </label>
-              <label className="label">
-                RG
-                <input className="field" name="rg" />
-              </label>
-              <label className="label">
-                Data de nascimento
-                <input className="field" name="birth_date" type="date" />
-              </label>
-              <label className="label">
-                Telefone / WhatsApp *
-                <input className="field" name="phone" inputMode="tel" required />
->>>>>>> 94f138011f100fb253dc2d9d895d7f497894e50c
               </label>
               <label className="label sm:col-span-2">
                 Endereço completo *
