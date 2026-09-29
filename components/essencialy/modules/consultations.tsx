@@ -59,7 +59,15 @@ export function ConsultForm({ target, prescriptions, close, load, flash }: any) 
   async function save(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
     const f = new FormData(e.currentTarget);
+    const lensometryFields = ['od_spherical', 'od_cylindrical', 'od_axis', 'oe_spherical', 'oe_cylindrical', 'oe_axis', 'addition'] as const;
+    const lensometry = !previous && lensometryFields.some(field => String(f.get(`lensometry_${field}`) || '').trim())
+      ? Object.fromEntries(lensometryFields.map(field => {
+          const value = String(f.get(`lensometry_${field}`) || '').trim();
+          return [field, field.endsWith('_spherical') ? signedSphere(value) : value];
+        }))
+      : null;
     const screening = {
+      ...(lensometry ? { lensometria: lensometry } : {}),
       visual_acuity_far_od:f.get('va_far_od'), visual_acuity_far_oe:f.get('va_far_oe'),
       visual_acuity_near_od:f.get('va_near_od'), visual_acuity_near_oe:f.get('va_near_oe'),
       corrected:f.get('corrected')==='on',
@@ -102,7 +110,7 @@ export function ConsultForm({ target, prescriptions, close, load, flash }: any) 
         </label>
         <label className="flex items-center gap-2 sm:col-span-2"><input type="checkbox" checked={noReturn} onChange={e=>setNoReturn(e.target.checked)}/> Sem retorno definido</label>
         <section className="sm:col-span-2 rounded-lg border bg-gray-50 p-4">
-          <h3 className="font-black">Prescrição anterior</h3>
+          <h3 className="font-black">{previous ? 'Prescrição anterior' : 'Lensometria'}</h3>
           {previous ? (
             <>
               <table className="w-full text-sm text-center mt-3">
@@ -134,7 +142,25 @@ export function ConsultForm({ target, prescriptions, close, load, flash }: any) 
                 <span>Exame: <b>{br(previous.exam_date)}</b></span>
               </div>
             </>
-          ) : <p className="text-sm text-gray-500 mt-2">Nenhuma prescrição anterior registrada.</p>}
+          ) : (
+            <>
+              <p className="text-sm text-gray-500 mt-2">Grau dos óculos antigos. Preenchimento opcional para pacientes sem receita cadastrada.</p>
+              <table className="w-full text-sm text-center mt-3">
+                <thead className="text-gray-500"><tr><th scope="col">Olho</th><th scope="col">Esf</th><th scope="col">Cil</th><th scope="col">Eixo</th></tr></thead>
+                <tbody>
+                  {(['od', 'oe'] as const).map(eye => (
+                    <tr key={eye}>
+                      <th scope="row" className="text-left font-black text-[#9a7b2f] pr-2 w-10">{eye.toUpperCase()}</th>
+                      {(['spherical', 'cylindrical', 'axis'] as const).map((field, index) => (
+                        <td key={field} className="px-1 py-1"><input className="field text-center" name={`lensometry_${eye}_${field}`} aria-label={`Lensometria ${eye.toUpperCase()} ${['Esférico', 'Cilíndrico', 'Eixo'][index]}`} placeholder={field === 'axis' ? '' : '+ / -'} /></td>
+                      ))}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+              <label className="flex items-center justify-center gap-2 mt-3"><span className="font-bold text-sm text-[#9a7b2f]">Adição:</span><input className="field text-center w-28" name="lensometry_addition" aria-label="Lensometria Adição" /></label>
+            </>
+          )}
         </section>
         <h3 className="font-black sm:col-span-2">Receita</h3>
         <section className="sm:col-span-2 rounded-lg border bg-white p-4">
