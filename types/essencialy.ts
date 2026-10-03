@@ -35,6 +35,7 @@ export type Schedule = {
   end_time: string;
   interval_minutes: number;
   slot_times?: string[] | null;
+  closed_at?: string | null;
   cities?: City;
   optical_stores?: Store;
 };

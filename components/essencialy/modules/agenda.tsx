@@ -1,6 +1,6 @@
 'use client';
 
-import { FormEvent, useCallback, useEffect, useMemo, useState } from 'react';
+import { FormEvent, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { supabase } from '@/lib/supabase';
 import {
   CalendarDays, Cake, Check, ClipboardList, Clock3, FilePlus2, FileText, Pencil, Trash2,
@@ -30,14 +30,19 @@ export function Agenda({
   const [cityFilter, setCityFilter] = useState('');
   const [storeFilter, setStoreFilter] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
-  const [openedSchedule, setOpenedSchedule] = useState<Schedule | null>(null);
+  const [scheduleFilter, setScheduleFilter] = useState('abertas');
+  const [closing, setClosing] = useState(false);
+  const closingRef = useRef(false);
+  const [openedScheduleId, setOpenedScheduleId] = useState<string | null>(null);
+  const openedSchedule: Schedule | undefined = schedules.find((s: Schedule) => s.id === openedScheduleId);
+  const setOpenedSchedule = (schedule: Schedule | null) => setOpenedScheduleId(schedule?.id || null);
   const [editingSchedule, setEditingSchedule] = useState<Schedule | null>(null);
   const base = new Date(agendaDate + 'T12:00:00');
   const end = new Date(base);
   if (mode === 'semana') end.setDate(end.getDate() + 6);
   if (mode === 'mes') { base.setDate(1); end.setMonth(end.getMonth() + 1, 0); }
   const list = [...schedules].filter((s: Schedule) =>
-    (!cityFilter || s.city_id === cityFilter) && (!storeFilter || s.store_id === storeFilter)
+    (!cityFilter || s.city_id === cityFilter) && (!storeFilter || s.store_id === storeFilter) && (scheduleFilter === 'todas' || (scheduleFilter === 'encerradas' ? Boolean(s.closed_at) : !s.closed_at))
   ).sort((a:Schedule,b:Schedule)=>a.schedule_date.localeCompare(b.schedule_date));
   const pending = appointments.filter(
     (a: Appointment) =>
@@ -53,14 +58,39 @@ export function Agenda({
       await load();
       return;
     }
-    const { error } = await supabase
+    const { data, error } = await supabase
       .from('appointments')
       .update({ status: value, updated_at: new Date().toISOString() })
-      .eq('id', id);
+      .eq('id', id).select('id').maybeSingle();
     if (error) flash(error.message);
+    else if (!data) flash('O status não foi salvo. Verifique sua permissão.');
     else {
       flash('Agendamento atualizado.');
       load();
+    }
+  }
+  async function closeSchedule(schedule: Schedule) {
+    if (closingRef.current) return;
+    const linked = appointments.filter((a: Appointment) => a.schedule_id === schedule.id);
+    const pendingCount = linked.filter((a: Appointment) => !['ATENDIDO', 'FALTOSO', 'CANCELADO'].includes(a.status)).length;
+    if (!linked.length) return flash('Esta agenda ainda não possui agendamentos.');
+    if (pendingCount) return flash(`Ainda há ${pendingCount} atendimento(s) pendente(s). Finalize a consulta ou registre a falta/cancelamento antes de encerrar.`);
+    if (!window.confirm('Encerrar esta agenda? O histórico será preservado e novos agendamentos ficarão bloqueados.')) return;
+    closingRef.current = true;
+    setClosing(true);
+    try {
+      const { data, error } = await supabase.from('schedules')
+        .update({ closed_at: new Date().toISOString() }).eq('id', schedule.id).is('closed_at', null).select('id').maybeSingle();
+      if (error) return flash(error.message);
+      if (!data) return flash('A agenda não foi encerrada. Atualize a tela e verifique sua permissão.');
+      flash('Agenda encerrada. O histórico está disponível no filtro Encerradas.');
+      setOpenedSchedule(null);
+      await load();
+    } catch {
+      flash('Não foi possível confirmar o encerramento. Atualize a tela antes de tentar novamente.');
+    } finally {
+      closingRef.current = false;
+      setClosing(false);
     }
   }
   async function removeSchedule(schedule: Schedule) {
@@ -92,12 +122,15 @@ export function Agenda({
           </button>
         </div>
       </div>
-      <div className="grid sm:grid-cols-3 gap-3 mt-4">
+      <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-3 mt-4">
         <select className="field" value={cityFilter} onChange={e=>setCityFilter(e.target.value)}>
           <option value="">Todas as cidades</option>{Array.from(new Map(schedules.map((s:Schedule)=>[s.city_id,s.cities])).values()).filter(Boolean).map((c:any)=><option key={c.id} value={c.id}>{c.name}</option>)}
         </select>
         <select className="field" value={storeFilter} onChange={e=>setStoreFilter(e.target.value)}>
           <option value="">Todas as óticas</option>{Array.from(new Map(schedules.map((s:Schedule)=>[s.store_id,s.optical_stores])).values()).filter(Boolean).map((x:any)=><option key={x.id} value={x.id}>{x.name}</option>)}
+        </select>
+        <select className="field" aria-label="Situação da agenda" value={scheduleFilter} onChange={e=>setScheduleFilter(e.target.value)}>
+          <option value="abertas">Agendas abertas</option><option value="encerradas">Agendas encerradas</option><option value="todas">Todas as agendas</option>
         </select>
         <select className="field" value={statusFilter} onChange={e=>setStatusFilter(e.target.value)}>
           <option value="">Todos os status</option><option value="AGENDADO">Aguardando confirmação</option><option value="CONFIRMADO">Confirmados</option><option value="FALTOSO">Faltosos</option>
@@ -113,18 +146,18 @@ export function Agenda({
       )}
       <div className="grid gap-4 mt-5 md:grid-cols-2 xl:grid-cols-3">
         {list.length ? (
-          list.map((s: Schedule) => <article className="card p-5" key={s.id}><p className="text-xs font-black uppercase tracking-wide text-[#9a7b2f]">{s.cities?.name || 'Cidade não informada'}</p><h3 className="mt-1 text-lg font-black">{br(s.schedule_date)}</h3><p className="text-sm text-[#778079]">{s.optical_stores?.name} · {s.start_time.slice(0,5)} às {s.end_time.slice(0,5)}</p><p className="mt-1 text-sm">{s.professional_name}</p><button className="btn-primary mt-4 w-full" onClick={()=>setOpenedSchedule(s)}>Abrir agenda</button></article>)
+          list.map((s: Schedule) => <article className="card p-5" key={s.id}><p className="text-xs font-black uppercase tracking-wide text-[#9a7b2f]">{s.cities?.name || 'Cidade não informada'}</p><h3 className="mt-1 text-lg font-black">{br(s.schedule_date)}</h3><p className="text-sm text-[#778079]">{s.optical_stores?.name} · {s.start_time.slice(0,5)} às {s.end_time.slice(0,5)}</p><p className="mt-1 text-sm">{s.professional_name}</p><p className="mt-2 text-sm font-bold">{s.closed_at ? 'Encerrada' : 'Aberta'}</p><button className="btn-primary mt-4 w-full" onClick={()=>setOpenedSchedule(s)}>Abrir agenda</button></article>)
         ) : (
           <section className="card p-12 text-center">
             <CalendarDays className="mx-auto text-[#b3aa9d]" />
-            <b className="block mt-3">Nenhuma agenda nesta data.</b>
+            <b className="block mt-3">Nenhuma agenda com estes filtros.</b>
             <p className="text-sm text-[#7e877f]">
-              Crie uma agenda para liberar horários.
+              Altere os filtros ou crie uma agenda para liberar horários.
             </p>
           </section>
         )}
       </div>
-      {openedSchedule && <Modal wide title={`Agenda · ${br(openedSchedule.schedule_date)} · ${openedSchedule.cities?.name || ''}`} close={()=>setOpenedSchedule(null)}><ScheduleBlock schedule={openedSchedule} apps={appointments.filter((a:Appointment)=>a.schedule_id===openedSchedule.id&&(!statusFilter||a.status===statusFilter))} book={(time:string)=>{setTarget({schedule:openedSchedule,time});setModal('booking')}} status={status} open={(p:Patient)=>{setTarget(p);setModal('consultation')}} clinical={clinical} triage={(a:Appointment)=>{setTarget(a);setView?.('triagem');setOpenedSchedule(null)}} edit={(a:Appointment,time:string)=>{setTarget({schedule:openedSchedule,time,appointment:a});setModal('booking')}}/><footer className="mt-5 flex flex-wrap gap-2 border-t pt-4"><button className="btn-secondary" onClick={()=>setEditingSchedule(openedSchedule)}><Pencil className="mr-1 inline" size={16}/> Editar agenda e horários</button><button className="rounded-xl border border-red-200 bg-red-50 px-4 py-2 font-bold text-red-700" onClick={()=>removeSchedule(openedSchedule)}><Trash2 className="mr-1 inline" size={16}/> Excluir agenda</button></footer></Modal>}
+      {openedSchedule && <Modal wide title={`Agenda · ${br(openedSchedule.schedule_date)} · ${openedSchedule.cities?.name || ''}`} close={()=>setOpenedSchedule(null)}><ScheduleBlock schedule={openedSchedule} apps={appointments.filter((a:Appointment)=>a.schedule_id===openedSchedule.id)} statusFilter={statusFilter} book={(time:string)=>{setTarget({schedule:openedSchedule,time});setModal('booking')}} status={status} open={(p:Patient)=>{setTarget(p);setModal('consultation')}} clinical={clinical} triage={(a:Appointment)=>{setTarget(a);setView?.('triagem');setOpenedSchedule(null)}} edit={(a:Appointment,time:string)=>{setTarget({schedule:openedSchedule,time,appointment:a});setModal('booking')}}/><footer className="mt-5 flex flex-wrap gap-2 border-t pt-4">{openedSchedule.closed_at ? <p className="text-sm font-bold">Agenda encerrada. Histórico preservado.</p> : <><button disabled={closing} className="btn-primary" onClick={()=>closeSchedule(openedSchedule)}>{closing ? 'Encerrando…' : 'Concluir e encerrar agenda'}</button><button className="btn-secondary" onClick={()=>setEditingSchedule(openedSchedule)}><Pencil className="mr-1 inline" size={16}/> Editar agenda e horários</button><button className="rounded-xl border border-red-200 bg-red-50 px-4 py-2 font-bold text-red-700" onClick={()=>removeSchedule(openedSchedule)}><Trash2 className="mr-1 inline" size={16}/> Excluir agenda</button></>}</footer></Modal>}
       {editingSchedule && <ScheduleEditor schedule={editingSchedule} appointments={appointments} profiles={profiles} cities={cities} stores={stores} flash={flash} load={load} close={()=>setEditingSchedule(null)} saved={()=>{setEditingSchedule(null);setOpenedSchedule(null)}}/>}
     </>
   );
@@ -138,7 +171,7 @@ function scheduleSlots(schedule: Schedule) {
     slots.push(`${String(Math.floor(n / 60)).padStart(2, '0')}:${String(n % 60).padStart(2, '0')}`);
   return slots;
 }
-function ScheduleBlock({ schedule, apps, book, status, open, clinical, triage, edit }: any) {
+function ScheduleBlock({ schedule, apps, book, status, open, clinical, triage, edit, statusFilter }: any) {
   const slots = scheduleSlots(schedule);
   const map = new Map(
     apps
@@ -167,6 +200,7 @@ function ScheduleBlock({ schedule, apps, book, status, open, clinical, triage, e
       <div className="divide-y">
         {slots.map((time) => {
           const a = map.get(time) as Appointment | undefined;
+          if (statusFilter && (!a || a.status !== statusFilter)) return null;
           return a ? (
             <div
               key={time}
@@ -184,7 +218,7 @@ function ScheduleBlock({ schedule, apps, book, status, open, clinical, triage, e
               </div>
               <div className="flex flex-wrap gap-2">
                 <Status value={a.status} />
-                 {a.status === 'AGENDADO' && (
+                 {!schedule.closed_at && a.status === 'AGENDADO' && (
                   <button
                     className="btn-secondary"
                     onClick={() => status(a.id, 'CONFIRMADO')}
@@ -192,8 +226,8 @@ function ScheduleBlock({ schedule, apps, book, status, open, clinical, triage, e
                     <Check className="inline" size={15} /> Confirmar
                   </button>
                  )}
-                 {a.status === 'CONFIRMADO' && <button className="btn-secondary" onClick={() => status(a.id, 'CHEGOU')}>Paciente chegou</button>}
-                 {['CONFIRMADO','CHEGOU','ANAMNESE_EM_ANDAMENTO'].includes(a.status) && <button className="btn-secondary" onClick={() => triage(a)}>Triagem</button>}
+                 {!schedule.closed_at && a.status === 'CONFIRMADO' && <button className="btn-secondary" onClick={() => status(a.id, 'CHEGOU')}>Paciente chegou</button>}
+                 {!schedule.closed_at && ['CONFIRMADO','CHEGOU','ANAMNESE_EM_ANDAMENTO'].includes(a.status) && <button className="btn-secondary" onClick={() => triage(a)}>Triagem</button>}
                  <a
                   className="btn-secondary"
                   target="_blank"
@@ -202,8 +236,8 @@ function ScheduleBlock({ schedule, apps, book, status, open, clinical, triage, e
                 >
                   WhatsApp
                  </a>
-                 <button className="btn-secondary" onClick={()=>edit(a,time)}>Editar</button>
-                {clinical && (
+                 {!schedule.closed_at && <button className="btn-secondary" onClick={()=>edit(a,time)}>Editar</button>}
+                {clinical && !schedule.closed_at && (
                   <>
                     <button
                       className="btn-secondary"
@@ -219,23 +253,23 @@ function ScheduleBlock({ schedule, apps, book, status, open, clinical, triage, e
                     </button>
                   </>
                 )}
-                <button
+                {!schedule.closed_at && <button
                   className="btn-secondary text-red-700"
                   onClick={() => status(a.id, 'CANCELADO')}
                 >
                   Cancelar
-                </button>
+                </button>}
               </div>
             </div>
           ) : (
             <div key={time} className="p-4 flex justify-between items-center">
               <div>
                 <b>{time}</b>
-                <p className="text-sm text-emerald-700">Disponível</p>
+                <p className="text-sm text-emerald-700">{schedule.closed_at ? 'Agenda encerrada' : 'Disponível'}</p>
               </div>
-              <button className="btn-secondary" onClick={() => book(time)}>
+              {!schedule.closed_at && <button className="btn-secondary" onClick={() => book(time)}>
                 Adicionar paciente
-              </button>
+              </button>}
             </div>
           );
         })}
@@ -363,68 +397,113 @@ export function ScheduleForm({ profile, profiles, cities, stores, close, load, f
 export function BookingForm({ profile, patients, item, close, load, flash }: any) {
   const [q, setQ] = useState(item.appointment?.patients?.full_name || '');
   const [pid, setPid] = useState(item.appointment?.patient_id || '');
-  const [birthDate,setBirthDate]=useState('');
+  const initialPatient: Patient | undefined = item.appointment?.patients || patients.find((p: Patient) => p.id === item.appointment?.patient_id);
+  const [birthDate,setBirthDate]=useState(initialPatient?.birth_date || '');
+  const [cpf, setCpf] = useState(formatCpf(item.appointment?.patients?.cpf || ''));
+  const [saving, setSaving] = useState(false);
+  const savingRef = useRef(false);
   const found = patients
     .filter((p: Patient) =>
       `${p.full_name} ${p.phone} ${p.cpf}`
         .toLowerCase()
-        .includes(q.toLowerCase()),
+        .includes(q.toLowerCase()) || Boolean(digits(q) && `${digits(p.phone)} ${digits(p.cpf || '')}`.includes(digits(q))),
     )
     .slice(0, 6);
   async function submit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
-    const f = new FormData(e.currentTarget);
-    let patientId = pid;
-    if (!patientId) {
-      const phone = digits(String(f.get('phone')));
-      const name = String(f.get('name')).trim();
-      const { data: existing } = await supabase.from('patients').select('id').eq('phone',phone).ilike('full_name',name).maybeSingle();
-      if (existing?.id) patientId = existing.id;
+    if (savingRef.current) return;
+    if (!birthDate) return flash('Informe a data de nascimento para agendar o paciente.');
+    const age = calculateAge(birthDate);
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(birthDate) || iso(new Date(`${birthDate}T12:00:00`)) !== birthDate || birthDate > iso() || age === null || age > 129) {
+      return flash('Informe uma data de nascimento válida, que não seja futura.');
     }
-    if (!patientId) {
-      const { data, error } = await supabase
-        .from('patients')
-        .insert({
-           full_name: String(f.get('name')).trim(),
-           phone: digits(String(f.get('phone'))),
-          birth_date: birthDate || null,
-          age: calculateAge(birthDate),
+    const cpfDigits = digits(cpf);
+    if (cpfDigits && cpfDigits.length !== 11) return flash('Informe o CPF completo, com 11 dígitos.');
+    const f = new FormData(e.currentTarget);
+    savingRef.current = true;
+    setSaving(true);
+    try {
+      const { data: schedule, error: scheduleError } = await supabase.from('schedules').select('id,closed_at').eq('id', item.schedule.id).single();
+      if (scheduleError) return flash(scheduleError.message);
+      if (schedule.closed_at) return flash('Esta agenda está encerrada e não aceita alterações.');
+      let patientId = pid;
+      if (!patientId) {
+        const phone = digits(String(f.get('phone') || ''));
+        const name = String(f.get('name') || '').trim();
+        const { data: existing, error: lookupError } = await supabase.from('patients').select('id,cpf').eq('phone', phone).eq('full_name', name).maybeSingle();
+        if (lookupError) return flash('Não foi possível conferir o cadastro existente: ' + lookupError.message);
+        if (existing?.id) {
+          if (cpfDigits && existing.cpf && digits(existing.cpf) !== cpfDigits) return flash('Já existe um paciente com este nome e telefone, mas com outro CPF. Confira e selecione o cadastro correto.');
+          patientId = existing.id;
+        }
+      }
+      if (!patientId) {
+        const { data, error } = await supabase.from('patients').insert({
+          full_name: String(f.get('name')).trim(),
+          phone: digits(String(f.get('phone'))),
+          cpf: cpfDigits || null,
+          birth_date: birthDate,
+          age,
           notes: f.get('patient_notes'),
           created_store_id: item.schedule.store_id,
           created_by: profile.id,
-        })
-        .select()
-        .single();
+        }).select('id').single();
+        if (error) return flash(error.message);
+        patientId = data.id;
+        setPid(patientId);
+      } else {
+        const { data: existing, error: readError } = await supabase.from('patients').select('id,cpf,birth_date').eq('id', patientId).single();
+        if (readError) return flash(readError.message);
+        const cpfChanged = Boolean(cpfDigits && digits(existing.cpf || '') !== cpfDigits);
+        const birthDateChanged = existing.birth_date !== birthDate;
+        if (cpfChanged || birthDateChanged) {
+          const { data: updated, error } = await supabase.from('patients').update({
+            ...(cpfChanged ? { cpf: cpfDigits } : {}),
+            ...(birthDateChanged ? { birth_date: birthDate, age } : {}),
+            updated_at: new Date().toISOString(),
+          }).eq('id', patientId).select('id,cpf,birth_date').maybeSingle();
+          if (error) return flash(error.message);
+          if (!updated || updated.birth_date !== birthDate || (cpfChanged && updated.cpf !== cpfDigits)) {
+            return flash('Os dados do paciente não foram salvos. Verifique sua permissão antes de agendar.');
+          }
+        }
+      }
+
+      const payload = {
+        schedule_id: item.schedule.id,
+        patient_id: patientId,
+        city_id: item.schedule.city_id,
+        store_id: item.schedule.store_id,
+        ...(!item.appointment ? { booked_by: profile.id } : {}),
+        starts_at: `${item.schedule.schedule_date}T${item.time}:00-03:00`,
+        has_plan: f.get('plan') === 'true',
+        exam_value: Number(f.get('value')),
+        notes: f.get('notes'),
+      };
+      const { data: saved, error } = item.appointment
+        ? await supabase.from('appointments').update(payload).eq('id', item.appointment.id).select('id').maybeSingle()
+        : await supabase.from('appointments').insert(payload).select('id').single();
       if (error) return flash(error.message);
-      patientId = data.id;
-    }
-    const payload = {
-      schedule_id: item.schedule.id,
-      patient_id: patientId,
-      city_id: item.schedule.city_id,
-      store_id: item.schedule.store_id,
-      booked_by: profile.id,
-      starts_at: `${item.schedule.schedule_date}T${item.time}:00-03:00`,
-      has_plan: f.get('plan') === 'true',
-      exam_value: Number(f.get('value')),
-      notes: f.get('notes'),
-    };
-    const { error } = item.appointment
-      ? await supabase.from('appointments').update(payload).eq('id',item.appointment.id)
-      : await supabase.from('appointments').insert(payload);
-    if (error) flash(error.message);
-    else {
-      flash('Paciente adicionado à agenda.');
+      if (!saved) return flash('O agendamento não foi salvo. Verifique sua permissão.');
+      flash(item.appointment ? 'Agendamento atualizado.' : 'Paciente adicionado à agenda.');
       if (!item.appointment) {
-        const { error: notifyError } = await supabase.functions.invoke('notify-appointment', { body: { schedule_id:item.schedule.id, patient_id:patientId, starts_at:payload.starts_at } });
-        if (notifyError) flash('Agendamento salvo, mas o e-mail de notificação não pôde ser enviado.');
+        try {
+          const { error: notifyError } = await supabase.functions.invoke('notify-appointment', { body: { schedule_id:item.schedule.id, patient_id:patientId, starts_at:payload.starts_at } });
+          if (notifyError) flash('Agendamento salvo, mas o e-mail de notificação não pôde ser enviado.');
+        } catch { flash('Agendamento salvo, mas o e-mail de notificação não pôde ser enviado.'); }
       }
       close();
-      load();
+      await load();
+    } catch {
+      flash('Não foi possível confirmar o salvamento. Atualize a agenda antes de tentar novamente.');
+    } finally {
+      savingRef.current = false;
+      setSaving(false);
     }
   }
+
   return (
-    <Modal title={`Adicionar paciente · ${item.time}`} close={close}>
+    <Modal title={`${item.appointment ? 'Editar agendamento' : 'Adicionar paciente'} · ${item.time}`} close={close}>
       <form onSubmit={submit} className="space-y-4">
         <label className="label">
           Buscar cadastro existente
@@ -434,6 +513,8 @@ export function BookingForm({ profile, patients, item, close, load, flash }: any
             onChange={(e) => {
               setQ(e.target.value);
               setPid('');
+              setCpf('');
+              setBirthDate('');
             }}
             placeholder="Nome, telefone ou CPF"
           />
@@ -448,6 +529,8 @@ export function BookingForm({ profile, patients, item, close, load, flash }: any
                 onClick={() => {
                   setPid(p.id);
                   setQ(p.full_name);
+                  setCpf(formatCpf(p.cpf || ''));
+                  setBirthDate(p.birth_date || '');
                 }}
               >
                 <b>{p.full_name}</b> <small>{formatPhone(p.phone)} · CPF {formatCpf(p.cpf)||'—'}</small>
@@ -455,6 +538,20 @@ export function BookingForm({ profile, patients, item, close, load, flash }: any
             ))}
           </div>
         )}
+        <div className="grid sm:grid-cols-2 gap-4">
+          <label className="label">
+            Data de nascimento *
+            <input name="birth_date" className="field" type="date" required max={iso()} value={birthDate} onChange={e=>setBirthDate(e.target.value)} />
+          </label>
+          <label className="label">
+            Idade calculada
+            <input className="field" value={calculateAge(birthDate)??''} readOnly placeholder="Informe a data de nascimento" />
+          </label>
+        </div>
+        <label className="label">CPF do paciente
+          <input name="cpf" className="field" inputMode="numeric" autoComplete="off" maxLength={14} value={cpf} onChange={e=>setCpf(formatCpf(e.target.value))} placeholder="000.000.000-00" />
+          <span className="text-xs font-normal text-[#778079]">Opcional. Se informado, será salvo no cadastro do paciente.</span>
+        </label>
         {!pid && (
           <div className="grid sm:grid-cols-2 gap-4">
             <label className="label sm:col-span-2">
@@ -462,14 +559,6 @@ export function BookingForm({ profile, patients, item, close, load, flash }: any
             </label>
             <label className="label">
               Telefone *<input name="phone" className="field" inputMode="tel" onInput={e=>e.currentTarget.value=formatPhone(e.currentTarget.value)} required />
-            </label>
-            <label className="label">
-              Data de nascimento
-              <input name="birth_date" className="field" type="date" value={birthDate} onChange={e=>setBirthDate(e.target.value)} />
-            </label>
-            <label className="label">
-              Idade calculada
-              <input className="field" value={calculateAge(birthDate)??''} readOnly placeholder="Informe a data de nascimento" />
             </label>
             <label className="label sm:col-span-2">
               Observação do paciente
@@ -502,7 +591,7 @@ export function BookingForm({ profile, patients, item, close, load, flash }: any
             <textarea name="notes" className="field" defaultValue={item.appointment?.notes} />
           </label>
         </div>
-        <button className="btn-primary w-full">Salvar agendamento</button>
+        <button className="btn-primary w-full" disabled={saving}>{saving ? 'Salvando…' : 'Salvar agendamento'}</button>
       </form>
     </Modal>
   );
